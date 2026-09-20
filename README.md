@@ -2,7 +2,7 @@
 
 Infrastructure as Code (IaC) built with **Terraform**, validated end-to-end by a **GitHub Actions** CI pipeline and tested locally with **LocalStack**, with no cloud costs involved.
 
-The project simulates a modular, segmented network topology designed for advanced platform engineering studies and multi-cloud architecture research (AWS today, Azure and OpenStack on the roadmap).
+The project simulates a modular, load-balanced network topology designed for advanced platform engineering studies and multi-cloud architecture research (AWS today, Azure and OpenStack on the roadmap).
 
 ![Terraform](https://img.shields.io/badge/Terraform-1.8%2B-844FBA?logo=terraform&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
@@ -26,23 +26,26 @@ The project simulates a modular, segmented network topology designed for advance
 
 ## 🏗️ Architecture
 
-The network is segmented to isolate workloads and reduce the attack surface.
+Traffic reaches the workloads through an **Application Load Balancer (ALB)**. The application instances live in **private subnets**, and access is controlled by dedicated **security groups** at both the load balancer and instance level.
 
-**Subnets (2 total)**
-
-| Subnet | Role |
+| Layer | Resources |
 |---|---|
-| **Public (Hub)** | Ingress resources, load balancing, bastion/management access |
-| **Private (Spoke)** | Application instances and backend databases, isolated from the public internet |
+| **Network** | 1 VPC with **2 private subnets** |
+| **Compute** | **4 VMs (EC2)** distributed across the 2 private subnets |
+| **Load balancing** | **Application Load Balancer** with a listener forwarding traffic to the 4 VMs |
+| **Security** | Security group for the **load balancers** (`aws_lb_sg.tf`) and security groups for the **instances/VPC** (`security_groups.tf`) |
+| **DNS** | **Route 53** records, created **conditionally** through a toggle variable |
+| **Data** | Database (`aws_db.tf`) |
 
-**Compute (4 VMs total)**
+### Security model
 
-| Location | Count | Purpose |
-|---|---|---|
-| Public subnet | 2 | Access points, load balancers, or bastion hosts |
-| Private subnet | 2 | Core application workloads or microservices |
+- The **load balancer security group** defines what can reach the ALB (listener ports).
+- The **instance security groups** only accept traffic from the load balancer, so the VMs are never exposed directly.
+- Instances sit in private subnets, isolated from direct internet access.
 
-**Supporting resources:** VPC, security groups, Application Load Balancer with listener, database, and Route 53 records (see `aws_infra/`).
+### Conditional Route 53
+
+DNS resources are created only when enabled, using Terraform conditional expressions (`count`) driven by an input variable. This lets the same code run in LocalStack (where DNS may be skipped) and in environments where a real hosted zone exists.
 
 ---
 
@@ -69,14 +72,14 @@ The network is segmented to isolate workloads and reduce the attack surface.
 │   ├── providers.tf             # AWS provider (LocalStack endpoints)
 │   ├── variables.tf             # Input variable definitions
 │   ├── terraform.tfvars         # Variable values
-│   ├── aws_vpc.tf               # VPC and subnets
-│   ├── ec2.tf                   # Compute instances
-│   ├── security_groups.tf       # Instance security groups
-│   ├── aws_lb.tf                # Load balancer
-│   ├── aws_lb_listener.tf       # Load balancer listener
+│   ├── aws_vpc.tf               # VPC and 2 private subnets
+│   ├── ec2.tf                   # 4 compute instances
+│   ├── security_groups.tf       # Instance / VPC security groups
+│   ├── aws_lb.tf                # Application Load Balancer
+│   ├── aws_lb_listener.tf       # ALB listener
 │   ├── aws_lb_sg.tf             # Load balancer security group
 │   ├── aws_db.tf                # Database
-│   ├── aws_route53.tf           # DNS records
+│   ├── aws_route53.tf           # DNS records (conditional)
 │   ├── dynamodb.tf              # DynamoDB resources
 │   └── .terraform.lock.hcl      # Provider version lock
 ├── compose.yml                  # LocalStack container definition
@@ -95,7 +98,7 @@ The pipeline runs on every `push` and `pull_request` to `main`. It executes enti
 3. **Readiness check**: polls LocalStack's `/_localstack/init/ready` endpoint until initialization completes.
 4. **Backend provisioning**: creates the S3 bucket (`renato-terraform-state`) and the DynamoDB lock table (`terraform-locks`).
 5. **Terraform init & validate**: initializes the backend and providers, then validates the configuration.
-6. **Terraform plan**: generates the execution plan for the full topology.
+6. **Terraform plan**: generates the execution plan (VPC, 2 private subnets, 4 VMs, ALB, security groups, and conditional Route 53).
 7. **Terraform apply**: applies the plan on pushes to `main`, acting as an integration test of the code.
 
 > **Note:** because LocalStack is destroyed when the job ends, `apply` here validates that the code works; it does not deliver infrastructure. A real CD stage (AWS + OIDC + manual approval) is on the [roadmap](#-roadmap).
@@ -163,7 +166,9 @@ Terraform state is stored in an S3 bucket, with a DynamoDB table (`terraform-loc
 - **LocalStack in CI:** fast, free, and reproducible feedback on every commit, with no risk to a real account.
 - **Named Docker volume for LocalStack:** avoids bind-mount permission issues (LocalStack's DynamoDB binary failing to execute) in CI runners.
 - **Committed `terraform.tfvars`:** all values target LocalStack and contain no secrets, which keeps the pipeline reproducible for anyone who clones the repository.
-- **Segmented subnets:** public and private tiers follow a hub-and-spoke pattern to keep application and data workloads off the public internet.
+- **Private subnets behind an ALB:** workloads are never exposed directly; the load balancer is the single entry point.
+- **Separate security groups for LB and instances:** least-privilege rules, where instances only trust traffic coming from the load balancer.
+- **Conditional Route 53:** DNS is optional, so the same code works with or without a hosted zone.
 
 ---
 
