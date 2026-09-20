@@ -19,6 +19,21 @@ jobs:
     - name: Checkout do Repositório
       uses: actions/checkout@v4
 
+    # 1. Levanta o LocalStack usando o compose.yml e passa o token
+    - name: Iniciar LocalStack
+      run: docker compose up -d
+      env:
+        LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+
+    # 2. Aguarda até que o LocalStack esteja pronto para receber conexões do Terraform
+    - name: Aguardar o LocalStack
+      run: |
+        echo "Aguardando o LocalStack iniciar..."
+        while ! curl -s http://localhost:4566/_localstack/health > /dev/null; do
+          sleep 3
+        done
+        echo "LocalStack pronto!"
+
     - name: Configurar a Ferramenta Terraform
       uses: hashicorp/setup-terraform@v3
       with:

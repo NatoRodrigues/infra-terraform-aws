@@ -1,9 +1,21 @@
+locals {
+  subnet_ids = [
+    aws_subnet.webapp_subnet_1.id,
+    aws_subnet.webapp_subnet_2.id
+  ]
+  vm_names = ["VM1", "VM2", "VM3", "VM4"]
+}
+
 resource "aws_instance" "VM" {
-  for_each               = toset(["VM1", "VM2", "VM3", "VM4"])
-  ami                    = "ami-011899242bb902164"
-  instance_type          = "t2.micro"  
+  for_each               = toset(local.vm_names)
+  ami                    = var.ec2_config.ami
+  instance_type          = var.ec2_config.instance_type
   vpc_security_group_ids = [aws_security_group.webapp_sg.id]
   
+  # Distribui as VMs alternadamente entre a subnet 1 e a subnet 2
+  subnet_id              = local.subnet_ids[index(local.vm_names, each.key) % length(local.subnet_ids)]
+  associate_public_ip_address = true
+
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update

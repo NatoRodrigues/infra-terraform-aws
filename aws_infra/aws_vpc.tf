@@ -1,28 +1,32 @@
 resource "aws_vpc" "webapp_vpc" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.vpc_config.cidr_block
   tags = {
-    Name = "webapp-vpc"
+    Name = var.vpc_config.tags["Name"]
   }
+}
+
+locals {
+  extra_tag = "subnet_tag"
 }
 
 resource "aws_subnet" "webapp_subnet_1" {
     vpc_id = aws_vpc.webapp_vpc.id
-    cidr_block = "10.0.1.0/24"
+    cidr_block = var.subnet1_config.cidr_block
     tags = {
-        Name = "webapp-subnet-1"
+      Name = var.subnet1_config.tags["Name"]
     }
 
-    availability_zone = "us-west-1a"
+    availability_zone = var.subnet1_config.availability_zone
 }
 
 resource "aws_subnet" "webapp_subnet_2" {
     vpc_id = aws_vpc.webapp_vpc.id
-    cidr_block = "10.0.2.0/24"
+    cidr_block = var.subnet2_config.cidr_block
     tags = {
-        Name = "webapp-subnet-2"
+        Name = var.subnet2_config.tags["Name"]
     }
 
-    availability_zone = "us-west-1b"
+    availability_zone = var.subnet2_config.availability_zone
 }
 
 resource "aws_db_subnet_group" "webapp_db_subnet_group" {
