@@ -1,14 +1,30 @@
-# Terraform cache and state files
-.terraform/
+# Terraform
+**/.terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Variáveis do Terraform (mantém só os exemplos)
 *.tfvars
-!.tfvars.example
+*.tfvars.json
+!*.tfvars.example
 
-# Environment variables and secrets
+# LocalStack (cache, binários, licença, certificados)
+volume/
+
+# Variáveis de ambiente e segredos
 .env
+.env.*
+!.env.example
 
-# OS generated files
+# Arquivos gerados pelo sistema operacional
 .DS_Store
 Thumbs.db
