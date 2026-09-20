@@ -12,11 +12,6 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Variáveis do Terraform (mantém só os exemplos)
-*.tfvars
-*.tfvars.json
-!*.tfvars.example
-
 # LocalStack (cache, binários, licença, certificados)
 volume/
 
