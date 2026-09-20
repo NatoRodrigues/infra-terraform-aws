@@ -25,12 +25,19 @@ jobs:
       env:
         LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
 
-    # 2. Aguarda até que o LocalStack esteja pronto para receber conexões do Terraform
+    # 2. Aguarda com timeout e logs de diagnóstico caso falhe
     - name: Aguardar o LocalStack
       run: |
         echo "Aguardando o LocalStack iniciar..."
+        counter=0
         while ! curl -s http://localhost:4566/_localstack/health > /dev/null; do
           sleep 3
+          counter=$((counter+1))
+          if [ $counter -gt 20 ]; then
+            echo "ERRO: O LocalStack demorou muito a responder ou falhou ao iniciar. A mostrar os logs do Docker:"
+            docker compose logs
+            exit 1
+          fi
         done
         echo "LocalStack pronto!"
 
