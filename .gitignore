@@ -1,0 +1,14 @@
+# Terraform cache and state files
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!.tfvars.example
+
+# Environment variables and secrets
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
