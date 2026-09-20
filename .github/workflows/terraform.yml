@@ -11,7 +11,11 @@ jobs:
     name: "Terraform Validate & Apply"
     runs-on: ubuntu-latest
 
-    # Permissões necessárias para interagir com o repositório
+    # Define que todos os passos vão rodar dentro da pasta aws_infra automaticamente
+    defaults:
+      run:
+        working-directory: ./aws_infra
+
     permissions:
       contents: read
 
@@ -19,13 +23,11 @@ jobs:
     - name: Checkout do Repositório
       uses: actions/checkout@v4
 
-    # 1. Levanta o LocalStack usando o compose.yml e passa o token
     - name: Iniciar LocalStack
       run: docker compose up -d
       env:
         LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
 
-    # 2. Aguarda com timeout e logs de diagnóstico caso falhe
     - name: Aguardar o LocalStack
       run: |
         echo "Aguardando o LocalStack iniciar..."
@@ -34,7 +36,7 @@ jobs:
           sleep 3
           counter=$((counter+1))
           if [ $counter -gt 20 ]; then
-            echo "ERRO: O LocalStack demorou muito a responder ou falhou ao iniciar. A mostrar os logs do Docker:"
+            echo "ERRO: O LocalStack demorou muito a responder. A mostrar logs:"
             docker compose logs
             exit 1
           fi
