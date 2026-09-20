@@ -11,7 +11,6 @@ jobs:
     name: "Terraform Validate & Apply"
     runs-on: ubuntu-latest
 
-    # Define que todos os passos vão rodar dentro da pasta aws_infra automaticamente
     defaults:
       run:
         working-directory: ./aws_infra
@@ -42,6 +41,15 @@ jobs:
           fi
         done
         echo "LocalStack pronto!"
+
+    - name: Criar S3 Bucket no LocalStack
+      run: |
+        echo "A criar o bucket S3 para o backend do Terraform..."
+        aws --endpoint-url=http://localhost:4566 s3 mb s3://renato-terraform-state
+      env:
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        AWS_DEFAULT_REGION: us-east-1
 
     - name: Configurar a Ferramenta Terraform
       uses: hashicorp/setup-terraform@v3
